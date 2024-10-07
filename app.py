@@ -24,6 +24,7 @@ from anthropic import AsyncAnthropic
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import scrolledtext
+from tkinter import Radiobutton, IntVar
 from docx import Document
 
 try:
@@ -94,6 +95,38 @@ class App:
         self.output_file_button = tk.Button(root, text="Browse", command=self.browse_output_file)
         self.output_file_button.pack()
         
+        self.max_pages_var = IntVar(value=0)
+self.skip_pages_var = IntVar(value=0)
+self.threshold_var = IntVar(value=40)
+self.check_english_var = IntVar(value=0)
+self.no_markdown_var = IntVar(value=0)
+self.test_filtering_var = IntVar(value=0)
+
+self.max_pages_label = tk.Label(root, text="Max Pages:")
+self.max_pages_label.pack()
+self.max_pages_entry = tk.Entry(root, textvariable=self.max_pages_var)
+self.max_pages_entry.pack()
+
+self.skip_pages_label = tk.Label(root, text="Skip Pages:")
+self.skip_pages_label.pack()
+self.skip_pages_entry = tk.Entry(root, textvariable=self.skip_pages_var)
+self.skip_pages_entry.pack()
+
+self.threshold_label = tk.Label(root, text="Threshold:")
+self.threshold_label.pack()
+self.threshold_entry = tk.Entry(root, textvariable=self.threshold_var)
+self.threshold_entry.pack()
+
+self.check_english_check = tk.Checkbutton(root, text="Check English", variable=self.check_english_var)
+self.check_english_check.pack()
+
+self.no_markdown_check = tk.Checkbutton(root, text="No Markdown", variable=self.no_markdown_var)
+self.no_markdown_check.pack()
+
+self.test_filtering_check = tk.Checkbutton(root, text="Test Filtering", variable=self.test_filtering_var)
+self.test_filtering_check.pack()
+
+        
         self.run_button = tk.Button(root, text="Run", command=self.run_processing)
         self.run_button.pack()
         
@@ -113,7 +146,18 @@ class App:
         output_file = self.output_file_entry.get()
         self.log_text.insert(tk.END, f"Processing {input_file}...\n")
         self.root.update()
-        asyncio.run(main(input_file, output_file, self.log_text))
+        asyncio.run(main(
+    input_file,
+    output_file,
+    self.log_text,
+    max_test_pages=self.max_pages_var.get(),
+    skip_first_n_pages=self.skip_pages_var.get(),
+    starting_hallucination_similarity_threshold=self.threshold_var.get() / 100,
+    check_if_valid_english=bool(self.check_english_var.get()),
+    reformat_as_markdown=not bool(self.no_markdown_var.get()),
+    test_filtering_hallucinations=bool(self.test_filtering_var.get())
+))
+
 
 
 # Model Download
@@ -741,3 +785,5 @@ if __name__ == '__main__':
     root = tk.Tk()
     app = App(root)
     root.mainloop()
+
+
