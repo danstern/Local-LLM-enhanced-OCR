@@ -443,7 +443,10 @@ async def generate_completion_from_local_llm(llm_model_name: str, input_prompt: 
             generated_text = generated_text.encode('unicode_escape').decode()
         finish_reason = str(output['choices'][0]['finish_reason'])
         llm_model_usage_json = json.dumps(output['usage'])
-        logging.info(f"Completed text completion in {output['usage']['total_time']:.2f} seconds. Beginning of generated text: \n'{generated_text[:150]}'...")
+        if 'total time' in output['usage']:
+            logging.info(f"Completed text completion in {output['usage']['total_time']:.2f} seconds. Beginning of generated text: \n'{generated_text[:150]}'...")
+        else:
+            logging.info("Completed text completion. 'total_time' not available in the output. Beginning of generated text: \n'{generated_text[:150]}'...")
         return {
             "generated_text": generated_text,
             "finish_reason": finish_reason,
