@@ -25,8 +25,11 @@ import argparse
 import asyncio
 from llm_aided_ocr import main as process_pdf
 import GPUtil
+from flask import Flask, request, render_template, redirect, url_for, send_from_directory
 
-#Runtime Arguements
+app = Flask(__name__)
+
+# Runtime Arguments
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Process a PDF file with OCR and LLM correction.")
     parser.add_argument("input_file", help="Path to the input PDF file")
@@ -39,7 +42,43 @@ def parse_arguments():
     parser.add_argument("--test-filtering", action="store_true", help="Test hallucination filtering on existing output")
     return parser.parse_args()
 
-async def run_pdf_processor(args):
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        input_file = request.files['input_file']
+        max_pages = request.form.get('max_pages', type=int)
+        skip_pages = request.form.get('skip_pages', type=int)
+        threshold = request.form.get('threshold', type=float, default=0.40)
+        check_english = 'check_english' in request.form
+        no_markdown = 'no_markdown' in request.form
+        db_path = request.form.get('db_path', default="./sentence_embeddings.sqlite")
+        test_filtering = 'test_filtering' in request.form
+        output_dir = request.form.get('output_dir')
+
+        input_file_path = os.path.join('uploads', input_file.filename)
+        input_file.save(input_file_path)
+
+        args = argparse.Namespace(
+            input_file=input_file_path,
+            max_pages=max_pages,
+            skip_pages=skip_pages,
+            threshold=threshold,
+            check_english=check_english,
+            no_markdown=no_markdown,
+            db_path=db_path,
+            test_filtering=test_filtering
+        )
+
+        asyncio.run(run_pdf_processor(args, output_dir))
+        return redirect(url_for('download_file', filename=os.path.basename(input_file_path)))
+
+    return render_template('index.html')
+
+@app.route('/uploads/<filename>')
+def download_file(filename):
+    return send_from_directory('uploads', filename)
+
+async def run_pdf_processor(args, output_dir):
     await process_pdf(
         input_pdf_file_path=args.input_file,
         max_test_pages=args.max_pages,
@@ -50,10 +89,11 @@ async def run_pdf_processor(args):
         sentence_embeddings_db_path=args.db_path,
         test_filtering_hallucinations=args.test_filtering
     )
-    
+
 if __name__ == "__main__":
     args = parse_arguments()
     asyncio.run(run_pdf_processor(args))
+    app.run(debug=True)
 
 # GPU Check
 def is_gpu_available():
